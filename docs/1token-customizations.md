@@ -42,9 +42,10 @@ The selected Hybrid text profile may inherit the selected image profile key only
 1. the text profile's own key is empty;
 2. both profiles use the OpenAI provider;
 3. their normalized Base URLs are exactly equal;
-4. the image profile has a non-empty key.
+4. both profiles have equivalent effective direct/proxy routing;
+5. the image profile has a non-empty key.
 
-The text profile's own key always wins. Different providers or Base URLs must never share credentials. Inheritance is request-time only; the key is not copied into the text profile, preset JSON, source, logs, or static assets.
+The text profile's own key always wins. Different providers, Base URLs, or effective proxy routes must never share credentials. Inheritance is request-time only; the key is not copied into the text profile, preset JSON, source, logs, or static assets.
 
 **Expected implementation surface**
 

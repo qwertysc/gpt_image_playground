@@ -35,6 +35,7 @@ Use this workflow whenever `CookSleep/gpt_image_playground` publishes a newer of
 [ ] Agent preset-default migration version is persisted and only advanced deliberately
 [ ] Same-origin Hybrid key reuse remains narrow and request-time only
 [ ] Different Base URLs/providers cannot inherit keys
+[ ] Mixed effective direct/proxy routes cannot inherit keys
 [ ] VITE_SHOW_PRESET_CONFIG_ONLY remains true
 [ ] VITE_LOCK_PRESET_CONFIG_PARAMS remains true
 [ ] Worker name/domain remain unchanged

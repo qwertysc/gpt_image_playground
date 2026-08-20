@@ -35,7 +35,7 @@ Keep upstream's existing two-profile Hybrid architecture and tool orchestration.
 - `/v1/responses` uses `gpt-5.6-sol`.
 - `/v1/images/generations` and `/v1/images/edits` use `gpt-image-2`.
 - Same-origin requests use the same Authorization value.
-- Different Base URLs/providers never inherit credentials.
+- Different Base URLs/providers or mixed effective direct/proxy routes never inherit credentials.
 - Legacy `default-openai` keys survive migration.
 - Later reloads do not repeatedly overwrite Agent mode.
 - Cloudflare build, tests, preview, and production deployment are auditable.

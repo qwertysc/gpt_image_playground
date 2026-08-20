@@ -689,7 +689,10 @@ export function getAgentTextApiProfile(settings: Partial<AppSettings> | unknown)
   const imageProfile = normalized.profiles.find((item) => item.id === normalized.agentImageProfileId) ?? null
   if (profile.provider !== 'openai' || imageProfile?.provider !== 'openai' || !imageProfile.apiKey.trim()) return profile
   if (normalizeBaseUrl(profile.baseUrl) !== normalizeBaseUrl(imageProfile.baseUrl)) return profile
-  return { ...profile, apiKey: imageProfile.apiKey }
+  if (shouldUseApiProxy(profile.apiProxy) !== shouldUseApiProxy(imageProfile.apiProxy)) return profile
+  const resolved = { ...profile }
+  resolved.apiKey = imageProfile.apiKey
+  return resolved
 }
 
 export function getAgentImageApiProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {

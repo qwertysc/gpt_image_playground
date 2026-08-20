@@ -122,6 +122,13 @@ describe('getAgentTextApiProfile', () => {
     expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
   })
 
+  it('does not reuse the image key when only the text profile effectively uses the API proxy', () => {
+    vi.stubEnv('VITE_API_PROXY_AVAILABLE', 'true')
+    const settings = createHybridSettings({ apiProxy: true }, { apiProxy: false })
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
+  })
+
   it('does not reuse an empty image key', () => {
     const settings = createHybridSettings({}, { apiKey: '' })
 

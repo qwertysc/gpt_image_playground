@@ -61,7 +61,7 @@ The text profile's own key always wins. Different providers, Base URLs, or effec
 - Gallery/image profile ID remains `default-openai` to preserve legacy browser keys.
 - Gallery and Agent image execution use `gpt-image-2` through Images API.
 - Agent text uses `gpt-5.6-sol` through Responses API.
-- Build embeds `gpt-image-config.1token.json`.
+- The default `npm run build` embeds `gpt-image-config.1token.json`; `npm run build:base` is the explicit unbranded escape hatch.
 - Preset-only and locked-parameter policies are enabled.
 - Cloudflare Worker remains `gpt-image-playground-1token-store` with custom domain `gpt-image-playground.1token-store.com`.
 

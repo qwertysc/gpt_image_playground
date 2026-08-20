@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "mock:api": "node scripts/mock-image-api.mjs",
-    "build": "tsc -b && vite build",
-    "build:1token": "VITE_DEFAULT_API_URL=./gpt-image-config.1token.json VITE_SHOW_PRESET_CONFIG_ONLY=true VITE_LOCK_PRESET_CONFIG_PARAMS=true npm run build",
-    "deploy:cf": "npm run build:1token && wrangler deploy",
+    "build": "npm run build:1token",
+    "build:base": "tsc -b && vite build",
+    "build:1token": "VITE_DEFAULT_API_URL=./gpt-image-config.1token.json VITE_SHOW_PRESET_CONFIG_ONLY=true VITE_LOCK_PRESET_CONFIG_PARAMS=true npm run build:base",
+    "deploy:cf": "npm run build && wrangler deploy",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

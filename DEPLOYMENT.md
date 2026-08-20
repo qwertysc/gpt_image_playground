@@ -31,14 +31,16 @@ Connect this GitHub repository to the existing Worker in **Worker â†’ Settings â
 Recommended settings:
 
 ```text
-Production branch: main
+Production branch: main after merge (current pre-merge validation: custom/1token-hybrid-v0.7.5)
 Root directory: /
-Build command: npm ci && npm test && npm run build:1token
+Build command: npm ci && npm test && npm run build
 Deploy command: npx wrangler deploy
 Non-production branch builds: enabled
 Non-production deploy command: npx wrangler versions upload
 Build variable: NODE_VERSION=20
 ```
+
+The fork's default `npm run build` is intentionally the deterministic 1Token production build. Use `npm run build:base` only for an unbranded upstream-style build.
 
 A failed test or build stops before deployment. Non-production branches upload preview versions without promoting production traffic.
 

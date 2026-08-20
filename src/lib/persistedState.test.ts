@@ -146,6 +146,7 @@ describe('persisted state codec', () => {
     const enabled = createPersistedState({
       ...source(),
       previousPresetConfig,
+      agentPresetDefaultsVersion: 1,
       agentInputDrafts: {
         'conversation-a': {
           prompt: 'Agent 草稿',
@@ -193,11 +194,18 @@ describe('persisted state codec', () => {
     expect(enabled.galleryInputDraft?.inputImages).toEqual([{ id: imageA.id, dataUrl: '' }])
     expect(enabled.agentInputDrafts['conversation-a'].inputImages).toEqual([{ id: imageA.id, dataUrl: '' }])
     expect(enabled.previousPresetConfig).toEqual(previousPresetConfig)
+    expect(enabled.agentPresetDefaultsVersion).toBe(1)
     expect(disabled).not.toHaveProperty('prompt')
     expect(disabled).not.toHaveProperty('inputImages')
     expect(disabled.galleryInputDraft).toBeNull()
     expect(disabled.agentInputDrafts).toEqual({})
     expect(JSON.stringify(withLegacyConversation.agentConversations)).not.toContain('legacy-conversation-base64')
+  })
+
+  it('restores the durable Agent preset defaults version and normalizes invalid values', () => {
+    expect(normalizePersistedState({ agentPresetDefaultsVersion: 2 }, fallback())?.state.agentPresetDefaultsVersion).toBe(2)
+    expect(normalizePersistedState({ agentPresetDefaultsVersion: -1 }, fallback())?.state.agentPresetDefaultsVersion).toBe(0)
+    expect(normalizePersistedState({ agentPresetDefaultsVersion: 'invalid' }, fallback())?.state.agentPresetDefaultsVersion).toBe(0)
   })
 
   it('preserves an empty deployed profile snapshot when restoring persisted state', () => {

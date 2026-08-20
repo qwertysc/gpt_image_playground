@@ -1,0 +1,28 @@
+{
+  "customProviders": [],
+  "profiles": [
+    {
+      "id": "default-openai",
+      "name": "1Token-store 生图",
+      "description": "画廊和 Agent 图像工具使用 gpt-image-2 原生 Images API。API Key 仅保存在浏览器本地，并由同源 Agent 文本配置安全复用。",
+      "provider": "openai",
+      "baseUrl": "https://edge.1token-store.com",
+      "model": "gpt-image-2",
+      "apiMode": "images",
+      "streamImages": true,
+      "streamPartialImages": 2,
+      "isDefault": true
+    },
+    {
+      "id": "1token-agent",
+      "name": "1Token-store Agent",
+      "description": "Agent 文本模型使用 gpt-5.6-sol Responses API；在 Hybrid 模式下与同源图像配置共用用户 API Key。",
+      "provider": "openai",
+      "baseUrl": "https://edge.1token-store.com",
+      "model": "gpt-5.6-sol",
+      "apiMode": "responses",
+      "streamImages": true,
+      "streamPartialImages": 2
+    }
+  ]
+}

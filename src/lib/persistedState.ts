@@ -8,6 +8,7 @@ import { getPersistableAgentConversations, stripPersistedAgentConversations } fr
 export interface PersistedAppState {
   settings: AppSettings
   previousPresetConfig?: Pick<AppSettings, 'customProviders' | 'profiles'> | null
+  agentPresetDefaultsVersion?: number
   dismissedPresetProfileIds?: string[]
   dismissedPresetProviderIds?: string[]
   params: TaskParams
@@ -46,6 +47,7 @@ type PersistedStateFallback = Pick<
 
 export type NormalizedPersistedAppState = PersistedAppState & {
   previousPresetConfig: Pick<AppSettings, 'customProviders' | 'profiles'> | null
+  agentPresetDefaultsVersion: number
   dismissedPresetProfileIds: string[]
   dismissedPresetProviderIds: string[]
   prompt: string
@@ -93,6 +95,7 @@ export function createPersistedState(state: PersistedStateSource, includeLegacyA
   return {
     settings,
     previousPresetConfig: state.previousPresetConfig ?? null,
+    agentPresetDefaultsVersion: state.agentPresetDefaultsVersion ?? 0,
     dismissedPresetProfileIds: state.dismissedPresetProfileIds ?? [],
     dismissedPresetProviderIds: state.dismissedPresetProviderIds ?? [],
     params: state.params,
@@ -197,6 +200,9 @@ export function normalizePersistedState(
     state: {
       settings,
       previousPresetConfig,
+      agentPresetDefaultsVersion: typeof persistedState.agentPresetDefaultsVersion === 'number' && Number.isFinite(persistedState.agentPresetDefaultsVersion)
+        ? Math.max(0, Math.trunc(persistedState.agentPresetDefaultsVersion))
+        : 0,
       dismissedPresetProfileIds: normalizeStringArray(persistedState.dismissedPresetProfileIds, fallback.dismissedPresetProfileIds ?? []),
       dismissedPresetProviderIds: normalizeStringArray(persistedState.dismissedPresetProviderIds, fallback.dismissedPresetProviderIds ?? []),
       params: normalizeParams(persistedState.params, fallback.params),

@@ -14,6 +14,7 @@ import {
   findEquivalentApiProfile,
   getApiProviderLabel,
   getActiveApiProfile,
+  getAgentTextApiProfile,
   getCustomProviderDefinition,
   importCustomProviderSettingsFromJson,
   getDefaultApiProfileId,
@@ -285,13 +286,20 @@ export default function SettingsModal() {
     ? `已开启 ${enabledZipDownloadRouteCount} 项使用压缩包进行批量下载的途径`
     : '未开启任何使用压缩包进行批量下载的途径'
 
-  const agentProfiles = (presetConfigOnly ? visibleProfiles : draft.profiles)
-    .filter((profile) => {
-      if (!profile.apiKey.trim()) return false
-      if (profile.baseUrl.trim() || profile.provider === 'fal') return true
-      return apiProxyAvailable && isProfileApiProxyEligible(draft, profile) && (apiProxyLocked || profile.apiProxy)
-    })
-  const agentTextProfiles = agentProfiles.filter(isAgentTextApiProfile)
+  const agentProfileCandidates = presetConfigOnly ? visibleProfiles : draft.profiles
+  const isAgentProfileAvailable = (profile: ApiProfile, apiKey = profile.apiKey) => {
+    if (!apiKey.trim()) return false
+    if (profile.baseUrl.trim() || profile.provider === 'fal') return true
+    return apiProxyAvailable && isProfileApiProxyEligible(draft, profile) && (apiProxyLocked || profile.apiProxy)
+  }
+  const agentProfiles = agentProfileCandidates.filter((profile) => isAgentProfileAvailable(profile))
+  const effectiveAgentTextProfile = draft.agentApiConfigMode === 'hybrid' ? getAgentTextApiProfile(draft) : null
+  const agentTextProfiles = agentProfileCandidates
+    .filter(isAgentTextApiProfile)
+    .filter((profile) => isAgentProfileAvailable(
+      profile,
+      profile.id === effectiveAgentTextProfile?.id ? effectiveAgentTextProfile?.apiKey ?? profile.apiKey : profile.apiKey,
+    ))
   const selectedAgentTextProfile = agentTextProfiles.find((profile) => profile.id === draft.agentTextProfileId)
     ?? null
   const selectedAgentImageProfile = agentProfiles.find((profile) => profile.id === draft.agentImageProfileId)

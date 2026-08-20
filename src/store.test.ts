@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 import { DEFAULT_PARAMS } from './types'
-import { createDefaultFalProfile, createDefaultOpenAIProfile, DEFAULT_RESPONSES_MODEL, DEFAULT_SETTINGS, normalizeSettings } from './lib/apiProfiles'
+import { createDefaultFalProfile, createDefaultOpenAIProfile, DEFAULT_RESPONSES_MODEL, DEFAULT_SETTINGS, getAgentImageApiProfile, getAgentTextApiProfile, normalizeSettings } from './lib/apiProfiles'
 import type { AgentConversation, ExportData, StoredImage, StoredImageThumbnail, TaskRecord } from './types'
 import { getSelectedImageMentionLabel } from './lib/promptImageMentions'
 import { hasActiveDataOperations } from './lib/dataOperations'
@@ -659,9 +659,30 @@ describe('input persistence setting', () => {
 })
 
 describe('preset deletion state', () => {
+  const createHybridPreset = () => {
+    const imageProfile = createDefaultOpenAIProfile({
+      id: 'default-openai',
+      isDefault: true,
+      baseUrl: 'https://edge.example.com',
+      model: 'gpt-image-2',
+      apiMode: 'images',
+    })
+    const textProfile = createDefaultOpenAIProfile({
+      id: 'preset-agent-text',
+      baseUrl: 'https://edge.example.com',
+      model: DEFAULT_RESPONSES_MODEL,
+      apiMode: 'responses',
+    })
+    return {
+      imageProfile,
+      textProfile,
+      preset: { customProviders: [], profiles: [imageProfile, textProfile] },
+    }
+  }
+
   afterEach(() => {
     setPresetConfig(null)
-    useStore.setState({ previousPresetConfig: null })
+    useStore.setState({ previousPresetConfig: null, agentPresetDefaultsVersion: 0 })
   })
 
   it('removes an untouched preset after deployment removes it', async () => {
@@ -689,6 +710,137 @@ describe('preset deletion state', () => {
     const state = useStore.getState()
     expect(state.settings.profiles.map((profile) => profile.id)).toEqual(['preset-profile-a'])
     expect(state.settings.customProviders.map((provider) => provider.id)).toEqual(['preset-provider-a'])
+  })
+
+  it('migrates first adoption to Hybrid when the preset provides text and image profiles', async () => {
+    const { imageProfile, textProfile, preset } = createHybridPreset()
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        profiles: [{ ...imageProfile, apiKey: 'browser-key' }],
+        activeProfileId: imageProfile.id,
+        agentApiConfigMode: 'off',
+      }),
+      previousPresetConfig: null,
+      agentPresetDefaultsVersion: 0,
+      tasks: [],
+    })
+    setPresetConfig(preset)
+
+    await useStore.getState().setPresetImportedSettings(preset)
+
+    const state = useStore.getState()
+    const settings = state.settings
+    expect(settings.agentApiConfigMode).toBe('hybrid')
+    expect(state.agentPresetDefaultsVersion).toBe(1)
+    expect(settings.agentTextProfileId).toBe(textProfile.id)
+    expect(settings.agentImageProfileId).toBe(imageProfile.id)
+    expect(getAgentTextApiProfile(settings)).toMatchObject({ id: textProfile.id, apiKey: 'browser-key' })
+    expect(getAgentImageApiProfile(settings)?.id).toBe(imageProfile.id)
+  })
+
+  it('does not force Hybrid for an image-only preset', async () => {
+    const imageProfile = createDefaultOpenAIProfile({
+      id: 'default-openai',
+      isDefault: true,
+      baseUrl: 'https://edge.example.com',
+      model: 'gpt-image-2',
+      apiMode: 'images',
+    })
+    const preset = {
+      customProviders: [],
+      profiles: [imageProfile],
+    }
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        profiles: [{ ...imageProfile, apiKey: 'browser-key' }],
+        activeProfileId: imageProfile.id,
+        agentApiConfigMode: 'off',
+      }),
+      previousPresetConfig: null,
+      agentPresetDefaultsVersion: 0,
+      tasks: [],
+    })
+    setPresetConfig(preset)
+
+    await useStore.getState().setPresetImportedSettings(preset)
+
+    expect(useStore.getState()).toMatchObject({
+      agentPresetDefaultsVersion: 0,
+      settings: { agentApiConfigMode: 'off' },
+    })
+  })
+
+  it('does not let an existing image profile qualify a text-only preset', async () => {
+    const existingImageProfile = createDefaultOpenAIProfile({
+      id: 'existing-image',
+      baseUrl: 'https://edge.example.com',
+      model: 'gpt-image-2',
+      apiMode: 'images',
+    })
+    const textProfile = createDefaultOpenAIProfile({
+      id: 'text-only',
+      isDefault: true,
+      baseUrl: 'https://edge.example.com',
+      model: DEFAULT_RESPONSES_MODEL,
+      apiMode: 'responses',
+    })
+    const preset = { customProviders: [], profiles: [textProfile] }
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        profiles: [existingImageProfile],
+        activeProfileId: existingImageProfile.id,
+        agentApiConfigMode: 'off',
+      }),
+      previousPresetConfig: null,
+      agentPresetDefaultsVersion: 0,
+      tasks: [],
+    })
+    setPresetConfig(preset)
+
+    await useStore.getState().setPresetImportedSettings(preset)
+
+    expect(useStore.getState()).toMatchObject({
+      agentPresetDefaultsVersion: 0,
+      settings: { agentApiConfigMode: 'off' },
+    })
+  })
+
+  it('keeps a later native choice after the preset is removed and adopted again', async () => {
+    const { imageProfile, preset } = createHybridPreset()
+    useStore.setState({
+      settings: normalizeSettings({
+        ...DEFAULT_SETTINGS,
+        profiles: [{ ...imageProfile, apiKey: ['browser', 'key'].join('-') }],
+        activeProfileId: imageProfile.id,
+        agentApiConfigMode: 'off',
+      }),
+      previousPresetConfig: null,
+      agentPresetDefaultsVersion: 0,
+      tasks: [],
+    })
+    setPresetConfig(preset)
+    await useStore.getState().setPresetImportedSettings(preset)
+    const settings = useStore.getState().settings
+    expect(settings.agentApiConfigMode).toBe('hybrid')
+    expect(useStore.getState().agentPresetDefaultsVersion).toBe(1)
+    useStore.setState({
+      settings: normalizeSettings({ ...settings, agentApiConfigMode: 'native' }),
+    })
+
+    setPresetConfig(null)
+    await useStore.getState().setPresetImportedSettings({ customProviders: [], profiles: [] })
+    expect(useStore.getState().previousPresetConfig).toBeNull()
+
+    setPresetConfig(preset)
+    await useStore.getState().setPresetImportedSettings(preset)
+
+    expect(useStore.getState()).toMatchObject({
+      agentPresetDefaultsVersion: 1,
+      settings: { agentApiConfigMode: 'native' },
+    })
   })
 
   it('removes untouched presets when deployment removes the entire preset config', async () => {

@@ -9,6 +9,7 @@ import {
   createDefaultFalProfile,
   getApiProviderLabel,
   getActiveApiProfile,
+  getAgentTextApiProfile,
   getCustomProviderDefinition,
   findEquivalentApiProfile,
   importCustomProviderDefinitionFromJson,
@@ -46,6 +47,10 @@ describe('validateApiProfile', () => {
 })
 
 describe('normalizeSettings', () => {
+  it('defaults new users to Hybrid Agent mode', () => {
+    expect(DEFAULT_SETTINGS.agentApiConfigMode).toBe('hybrid')
+  })
+
   it('preserves a non-empty profile description and removes an empty one', () => {
     const settings = normalizeSettings({
       profiles: [
@@ -56,6 +61,71 @@ describe('normalizeSettings', () => {
 
     expect(settings.profiles[0].description).toBe('支持 **Markdown**')
     expect(settings.profiles[1].description).toBeUndefined()
+  })
+})
+
+describe('getAgentTextApiProfile', () => {
+  const createHybridSettings = (
+    textOverrides: Parameters<typeof createDefaultOpenAIProfile>[0] = {},
+    imageOverrides: Parameters<typeof createDefaultOpenAIProfile>[0] = {},
+  ) => {
+    const textProfile = createDefaultOpenAIProfile({
+      id: 'agent-text',
+      baseUrl: 'api.example.com/v1',
+      apiKey: '',
+      model: 'text-model',
+      apiMode: 'responses',
+      ...textOverrides,
+    })
+    const imageProfile = createDefaultOpenAIProfile({
+      id: 'agent-image',
+      baseUrl: 'https://api.example.com/v1',
+      apiKey: 'image-key',
+      model: 'image-model',
+      ...imageOverrides,
+    })
+    return normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      profiles: [textProfile, imageProfile],
+      activeProfileId: imageProfile.id,
+      agentApiConfigMode: 'hybrid',
+      agentTextProfileId: textProfile.id,
+      agentImageProfileId: imageProfile.id,
+    })
+  }
+
+  it('reuses the selected OpenAI image key for an empty same-origin text profile without persisting it', () => {
+    const settings = createHybridSettings()
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('image-key')
+    expect(settings.profiles.find((profile) => profile.id === 'agent-text')?.apiKey).toBe('')
+  })
+
+  it('keeps the text profile own key when it is non-empty', () => {
+    const settings = createHybridSettings({ apiKey: 'text-key' })
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('text-key')
+  })
+
+  it('does not reuse the image key for a different normalized Base URL', () => {
+    const settings = createHybridSettings({}, { baseUrl: 'https://other.example.com/v1' })
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
+  })
+
+  it('does not reuse the image key from a different provider', () => {
+    const settings = createHybridSettings({}, {
+      provider: 'fal',
+      baseUrl: 'https://api.example.com/v1',
+    })
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
+  })
+
+  it('does not reuse an empty image key', () => {
+    const settings = createHybridSettings({}, { apiKey: '' })
+
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
   })
 })
 
@@ -622,6 +692,51 @@ describe('mergePresetImportedSettings', () => {
 
     expect(updated.profiles[0]).toMatchObject({ apiKey: 'user-key', model: 'model-v2' })
     expect(cleared.profiles[0].apiKey).toBe('user-key')
+  })
+
+  it('migrates locked default-openai fields while preserving its browser key and adding the Agent profile', () => {
+    const current = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      profiles: [createDefaultOpenAIProfile({
+        id: DEFAULT_OPENAI_PROFILE_ID,
+        isDefault: true,
+        baseUrl: 'https://edge.1token-store.com',
+        apiKey: 'browser-key',
+        model: 'gpt-5.5',
+        apiMode: 'responses',
+      })],
+      activeProfileId: DEFAULT_OPENAI_PROFILE_ID,
+      agentApiConfigMode: 'off',
+    })
+    const merged = mergeDefaultImportedSettings(current, {
+      customProviders: [],
+      profiles: [
+        createDefaultOpenAIProfile({
+          id: DEFAULT_OPENAI_PROFILE_ID,
+          isDefault: true,
+          baseUrl: 'https://edge.1token-store.com',
+          model: DEFAULT_IMAGES_MODEL,
+          apiMode: 'images',
+        }),
+        createDefaultOpenAIProfile({
+          id: '1token-agent',
+          baseUrl: 'https://edge.1token-store.com',
+          model: 'gpt-5.6-sol',
+          apiMode: 'responses',
+        }),
+      ],
+    }, { lockPresetParams: true }).settings
+
+    expect(merged.profiles).toHaveLength(2)
+    expect(merged.profiles.find((profile) => profile.id === DEFAULT_OPENAI_PROFILE_ID)).toMatchObject({
+      apiKey: 'browser-key',
+      model: DEFAULT_IMAGES_MODEL,
+      apiMode: 'images',
+    })
+    expect(merged.profiles.find((profile) => profile.id === '1token-agent')).toMatchObject({
+      model: 'gpt-5.6-sol',
+      apiMode: 'responses',
+    })
   })
 
   it('preserves the saved profile order while updating locked presets by ID', () => {

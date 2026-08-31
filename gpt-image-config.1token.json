@@ -9,8 +9,7 @@
       "baseUrl": "https://edge.1token-store.com",
       "model": "gpt-image-2",
       "apiMode": "images",
-      "streamImages": true,
-      "streamPartialImages": 2,
+      "streamImages": false,
       "isDefault": true
     },
     {
@@ -22,7 +21,7 @@
       "model": "gpt-5.6-sol",
       "apiMode": "responses",
       "streamImages": true,
-      "streamPartialImages": 2
+      "streamPartialImages": 0
     }
   ]
 }

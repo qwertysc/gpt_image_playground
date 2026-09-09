@@ -32,6 +32,12 @@ async function importPresetConfigOnlyUrlSettings(options: { locked?: boolean, mu
 }
 
 describe('URL settings params', () => {
+  it('preserves an existing model when apiMode changes', () => {
+    const current = normalizeSettings({ profiles: [createDefaultOpenAIProfile({ id: 'saved', model: 'vendor/model', imageGenerationModel: '' })] })
+    const switched = normalizeSettings(buildSettingsFromUrlParams(current, new URLSearchParams('profileId=saved&apiMode=responses')))
+    expect(switched.profiles[0]).toMatchObject({ apiMode: 'responses', model: 'vendor/model', imageGenerationModel: '' })
+  })
+
   it('reports only IDs explicitly included in URL settings and profileId', () => {
     const params = new URLSearchParams('profileId=preset-query-profile')
     params.set('settings', JSON.stringify({
@@ -163,6 +169,61 @@ describe('URL settings params', () => {
       apiMode: 'responses',
       reasoningEffort: 'max',
     })
+  })
+
+  it('uses the image generation model from URL params for Responses profiles', () => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('apiMode=responses&imageGenerationModel=gpt-image-2.5-flare')),
+    })
+
+    expect(next.profiles.find((profile) => profile.id === next.activeProfileId)).toMatchObject({
+      apiMode: 'responses',
+      imageGenerationModel: 'gpt-image-2.5-flare',
+    })
+  })
+
+  it.each(['', '   ', ' gpt-image-2.5-flare '])('preserves explicit image generation model %j in new and same-ID URL imports', (model) => {
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const params = new URLSearchParams({ apiMode: 'responses', imageGenerationModel: model })
+    const created = normalizeSettings(buildSettingsFromUrlParams(current, params))
+    expect(created.profiles.find((profile) => profile.id === created.activeProfileId)?.imageGenerationModel).toBe(model.trim())
+
+    const profile = createDefaultOpenAIProfile({ id: 'shared-responses', apiMode: 'responses', imageGenerationModel: 'custom-image-model' })
+    const existing = normalizeSettings({ profiles: [profile], activeProfileId: profile.id })
+    params.set('profileId', profile.id)
+    const updated = normalizeSettings(buildSettingsFromUrlParams(existing, params))
+    expect(updated.profiles).toHaveLength(1)
+    expect(updated.profiles[0].imageGenerationModel).toBe(model.trim())
+  })
+
+  it.each(['', '   '])('preserves blank image generation model %j in JSON settings imports', (model) => {
+    const params = new URLSearchParams({ settings: JSON.stringify({ profiles: [
+      createDefaultOpenAIProfile({ id: 'shared-responses', apiMode: 'responses', imageGenerationModel: model }),
+    ] }) })
+    const next = normalizeSettings(buildSettingsFromUrlParams(DEFAULT_SETTINGS, params))
+    expect(next.profiles.find((profile) => profile.id === next.activeProfileId)?.imageGenerationModel).toBe('')
+  })
+
+  it.each(['query', 'json'])('preserves blank image generation models in preset-only %s imports', async (source) => {
+    const { buildSettingsFromUrlParams } = await importPresetConfigOnlyUrlSettings()
+    const profile = createDefaultOpenAIProfile({ apiMode: 'responses', imageGenerationModel: 'custom-image-model' })
+    const current = normalizeSettings({ profiles: [profile], activeProfileId: profile.id })
+    for (const model of ['', '   ']) {
+      const params = new URLSearchParams(source === 'query'
+        ? { imageGenerationModel: model }
+        : { settings: JSON.stringify({ profiles: [{ provider: 'openai', imageGenerationModel: model }] }) })
+      const next = normalizeSettings(buildSettingsFromUrlParams(current, params))
+      expect(next.profiles[0].imageGenerationModel).toBe('')
+    }
+  })
+
+  it('preserves an existing image generation model when the URL omits it', () => {
+    const profile = createDefaultOpenAIProfile({ id: 'shared-responses', apiMode: 'responses', imageGenerationModel: 'custom-image-model' })
+    const current = normalizeSettings({ profiles: [profile], activeProfileId: profile.id })
+    const next = normalizeSettings(buildSettingsFromUrlParams(current, new URLSearchParams({ profileId: profile.id, apiMode: 'responses' })))
+    expect(next.profiles[0].imageGenerationModel).toBe('custom-image-model')
   })
 
   it('uses profile name from URL params for OpenAI profiles', () => {
@@ -335,8 +396,42 @@ describe('URL settings params', () => {
     expect(next.profiles[0]).toMatchObject({ provider: 'custom-provider', codexCli: true })
   })
 
+  it('applies the transparent background method to the active fal profile', () => {
+    const falProfile = createDefaultFalProfile({ id: 'fal-profile' })
+    const current = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      profiles: [falProfile],
+      activeProfileId: falProfile.id,
+    })
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('transparentBackgroundMethod=local')),
+    })
+
+    expect(next.profiles[0].transparentBackgroundMethod).toBe('local')
+  })
+
+  it('applies the transparent background method to a requested custom profile', () => {
+    const current = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      customProviders: [{ id: 'custom-provider', name: 'Custom Provider', submit: { path: 'images/generations' } }],
+      profiles: [{
+        ...createDefaultOpenAIProfile({ id: 'custom-profile' }),
+        provider: 'custom-provider',
+      }],
+      activeProfileId: 'custom-profile',
+    })
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('profileId=custom-profile&transparentBackgroundMethod=local')),
+    })
+
+    expect(next.activeProfileId).toBe('custom-profile')
+    expect(next.profiles[0].transparentBackgroundMethod).toBe('local')
+  })
+
   it('clears known URL setting params without touching unrelated params', () => {
-    const params = new URLSearchParams('reasoningEffort=high&foo=bar')
+    const params = new URLSearchParams('reasoningEffort=high&transparentBackgroundMethod=local&foo=bar')
 
     expect(hasUrlSettingParams(params)).toBe(true)
     clearUrlSettingParams(params)
@@ -733,6 +828,7 @@ describe('URL settings params', () => {
         provider: 'openai',
         model: 'patched-model-b',
         timeout: 240,
+        transparentBackgroundMethod: 'local',
       }],
     }))
 
@@ -753,7 +849,19 @@ describe('URL settings params', () => {
       apiKey: 'key-b',
       model: 'patched-model-b',
       timeout: 240,
+      transparentBackgroundMethod: 'local',
     })
+  })
+
+  it('applies the transparent background method in preset-only mode', async () => {
+    const { buildSettingsFromUrlParams } = await importPresetConfigOnlyUrlSettings()
+    const current = normalizeSettings(DEFAULT_SETTINGS)
+    const next = normalizeSettings({
+      ...current,
+      ...buildSettingsFromUrlParams(current, new URLSearchParams('transparentBackgroundMethod=local')),
+    })
+
+    expect(next.profiles[0].transparentBackgroundMethod).toBe('local')
   })
 
   it('preserves a trailing slash when overriding a custom preset API URL', async () => {
@@ -862,7 +970,7 @@ describe('URL settings params', () => {
     const next = normalizeSettings({
       ...current,
       ...buildSettingsFromUrlParams(current, new URLSearchParams(
-        'apiUrl=https://changed.example.com/v1&apiKey=changed-key&model=changed-model',
+        'apiUrl=https://changed.example.com/v1&apiKey=changed-key&model=changed-model&transparentBackgroundMethod=local',
       )),
     })
 
@@ -870,6 +978,7 @@ describe('URL settings params', () => {
       baseUrl: current.profiles[0].baseUrl,
       apiKey: 'changed-key',
       model: current.profiles[0].model,
+      transparentBackgroundMethod: 'api',
     })
   })
 

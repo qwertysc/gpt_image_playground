@@ -5,3 +5,4 @@ dev-proxy.config.json
 .env
 .env.*
 !.env.example
+!.env.test

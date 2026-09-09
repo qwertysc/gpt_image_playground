@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # 🎨 GPT Image Playground
 
@@ -8,9 +8,9 @@
 [![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**基于 OpenAI gpt-image-2 API 的图片生成与编辑工具**
+**基于 OpenAI gpt-image-2.5 API 的图片生成与编辑工具**
 
-提供简洁精美的 Web UI，支持 OpenAI / OpenAI 兼容接口、fal.ai 与可导入的自定义 HTTP 供应商。<br>
+提供简洁精美的 Web UI，支持 OpenAI / OpenAI 兼容接口、sub2api（异步）、fal.ai 与可导入的自定义 HTTP 供应商。<br>
 支持文本生图、参考图与遮罩编辑，数据纯本地化存储，带来流畅的历史记录与参数管理体验。
 
 <br>
@@ -32,6 +32,8 @@
 欢迎使用大模型聚合平台 TokenToken：[https://1token-store.com](https://gitee.com/link?target=https%3A%2F%2F1token-store.com)。
 
 满血 GPT 系列模型，网络问题、ChatGPT 账户注册问题、海外信用卡支付订阅的问题，老板们统统不用操心，像使用国产模型一样丝滑使用。
+
+本 Fork 的编译预置使用 `gpt-image-2` 异步生图与 `gpt-5.6-sol` 流式 Hybrid Agent，详见 [1Token 部署说明](DEPLOYMENT.md)。
 
 ---
 
@@ -91,9 +93,9 @@
 - **参考图与遮罩**：支持上传最多 16 张参考图（支持剪贴板和拖拽）。内置可视化遮罩编辑器，自动预处理以符合官方分辨率限制。
 - **批量与迭代**：支持单次多图生成；一键将满意结果转为参考图，无缝开启下一轮修改。
 - **流式生成预览**：`Images API` 与 `Responses API` 模式均支持流式接收中间步骤图像，缓解连接超时问题。
-- **透明背景后处理**：画廊模式下选择 PNG 格式后可开启透明背景功能，自动在提示词末尾追加工作流说明，要求模型使用纯绿色或纯洋红色背景，并在结果返回后本地去除原图中的背景色，保存为带透明通道的 PNG。
+- **透明背景（API 原生 / 本地后处理双模式）**：画廊模式下选择 PNG 或 WebP 格式后可开启透明背景功能，每个 API 配置可独立选择实现方式（设置入口在 API 配置页）。API 原生模式会直接请求模型返回透明通道（需当前接口和模型支持；fal.ai 暂无对应参数），本地后处理模式则会要求模型使用纯绿色或纯洋红色背景，并在结果返回后于浏览器中去除背景色，按所选 PNG 或 WebP 格式保存透明结果。
 
-  > 透明背景后处理功能为本地后处理流程，适用于图标、贴纸、单主体素材等场景，并非 API 原生透明通道（GPT-Image-2 不支持）。若主体边缘存在复杂发丝、半透明材质、强反光或与背景色接近的颜色，可能出现边缘残留或误抠。
+  > 本地后处理流程适用于图标、贴纸、单主体素材等场景；若主体边缘存在复杂发丝、半透明材质、强反光或与背景色接近的颜色，可能出现边缘残留或误抠。若使用 API 原生模式时接口返回“不支持透明背景”类错误，应用会提示切换为本地后处理。
 
 ### 🤖 Agent 多轮对话模式
 - **多轮对话与上下文记忆**：基于 Responses API 的对话式生成，Agent 会理解上下文并按需调用图像工具；支持 `@` 引用参考图或前面轮次生成的图片，并自动识别上下文中的图片。
@@ -115,7 +117,7 @@
 
 ### 🔌 多配置与供应商增强
 - **多配置管理**：支持创建并保存多个 API 配置（包含供应商、API Key、模型等），按需快速切换；支持一键复制当前配置到列表底部，并通过拖拽对配置列表与供应商列表进行自定义排序。
-- **多供应商接入**：内置 OpenAI 兼容接口（含 `Images API` 和 `Responses API`）、fal.ai（支持队列），并支持通过 JSON 导入自定义 HTTP 供应商配置（兼容同步/异步任务）。
+- **多供应商接入**：内置 OpenAI 兼容接口（含 `Images API` 和 `Responses API`）、sub2api（异步）、fal.ai（支持队列），并支持通过 JSON 导入自定义 HTTP 供应商配置（兼容同步/异步任务）。
 - **Agent 模式独立 API 配置**：支持为 Agent 模式使用原生（Response API）或混合（Response API + Image API）的独立 API 配置，解决部分供应商/模型不支持 `image_generation` 工具的问题。
 - **API 代理**：OpenAI 兼容接口与 fal.ai 均可配置自定义代理。其中 OpenAI 兼容接口可开启同源 `/api-proxy/` 代理，交由 Docker 或本地开发环境转发至真实 API，绕开浏览器 CORS 限制。
 - **Codex CLI 兼容模式**：对上游为 Codex CLI 的 API，开启后应用 Codex CLI 实际支持的参数，并将多图生成拆分为并发单图。
@@ -132,15 +134,15 @@
 <a id="preset-config"></a>
 ### 预置配置说明
 
-所有部署方式都可以通过环境变量提供"预置配置"——部署端预先加入用户配置列表的 API 配置。用户打开页面时会自动看到这些配置，无需手动创建，格式和用户自己创建的配置完全一致。
+所有部署方式都可以通过环境变量提供“预置配置”——部署端预先加入用户配置列表的 API 配置。用户打开页面时会自动看到这些配置，无需手动创建，格式和用户自己创建的配置完全一致。
 
 环境变量的值支持三种填写方式：
 
 | 填写方式 | 说明 | 示例 |
 |------|------|------|
 | **直接填写 API 地址** | 自动创建一个 OpenAI 兼容的默认预置配置（ID 为 `default-openai`）并注入 API URL，其余参数（模型、超时等）使用应用默认值，用户只需补充 API Key。末尾带 `/` 时直接拼接接口，不补 `/v1` 前缀。适合只提供一个配置的部署。后续如需通过 JSON 或链接更新此配置，指定 `id` 为 `default-openai` 即可。 | `https://api.openai.com/v1` |
-| **API 地址 + 查询参数** | 在地址后追加参数，可同时预填 Key、模型等字段。 | `https://api.openai.com/v1?model=gpt-image-2&apiMode=responses` |
-| **JSON 配置文件 / 导入链接** | 通过仓库内或本地的 JSON 文件路径（如 `./config.json`）、远程 URL 或含 `?settings=` 参数的导入链接提供完整预置配置，支持预置多个配置（OpenAI 兼容、fal.ai 或自定义供应商）。 | 详见 [预置配置 JSON 格式](#preset-config-json) |
+| **API 地址 + 查询参数** | 在地址后追加参数，可同时预填 Key、模型等字段。 | `https://api.openai.com/v1?model=gpt-image-2.5-sunburst&apiMode=images` |
+| **JSON 配置文件 / 导入链接** | 通过仓库内或本地的 JSON 文件路径（如 `./config.json`）、远程 URL 或含 `?settings=` 参数的导入链接提供完整预置配置，支持预置多个配置（OpenAI 兼容、sub2api（异步）、fal.ai 或自定义供应商）。 | 详见 [预置配置 JSON 格式](#preset-config-json) |
 
 **环境变量一览**
 
@@ -177,7 +179,7 @@
 VITE_DEFAULT_API_URL=https://api.openai.com/v1
 ```
 
-**部署**
+**初始部署**
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCookSleep%2Fgpt_image_playground&project-name=gpt-image-playground&repository-name=gpt-image-playground)
 
@@ -185,21 +187,23 @@ VITE_DEFAULT_API_URL=https://api.openai.com/v1
 
 **绑定自定义域名 (国内直连)**：Vercel 默认分配的 `.vercel.app` 域名在国内通常无法直接访问。如果你希望在国内直连访问，请在 Vercel 项目的 **Settings → Domains** 中绑定你自己的域名。
 
-**配置自动更新**：
+**更新方式**
 
-本项目已在 `vercel.json` 中关闭了默认的自动部署。若需在同步 GitHub 上游代码后自动更新 Vercel 部署：
+本项目已在 `vercel.json` 中关闭了默认的自动部署。若你 Fork 了本仓库，建议配置 Deploy Hook 以实现新版本自动构建：
 
-1. 在 Vercel 项目设置 **Settings -> Git** 的 **Deploy Hooks** 中创建一个名为 `Release` 的 Hook（Branch 填 `main`）并复制生成的 URL。
-2. 在你 Fork 的 GitHub 仓库设置 **Settings -> Secrets and variables -> Actions** 中，新建 Secret `VERCEL_DEPLOY_HOOK`，填入刚才的 URL。
+1. 在 Vercel 项目的 **Settings → Git → Deploy Hooks** 中创建一个名为 `Release` 的 Hook（Branch 填 `main`）并复制生成的 URL。
+2. 在你 Fork 的 GitHub 仓库 **Settings → Secrets and variables → Actions** 中，新建 Secret `VERCEL_DEPLOY_HOOK`，填入刚才的 URL。
 
-此后，只有在上游发布了正式版本（即包含新 Release / 版本号变动）时，在 GitHub 点击 **Sync fork** 才会自动触发 Vercel 构建部署；日常的普通代码提交不会触发部署。
+配置完成后：
+- **自动更新**：只有在本仓库发布了正式版本（即包含新 Release / 版本号变动）时，在你的 Fork 页面点击 **Sync fork** 才会自动触发 Vercel 构建部署；日常的普通代码提交不会触发部署。
+- **手动触发**：若需立即部署最新代码（包括未发布正式版本的日常提交），可进入仓库顶部的 **Actions** 标签页，在左侧选择 **Deploy to Vercel**，点击右侧的 **Run workflow** 下拉按钮（分支选择 `main`），点击绿色的 **Run workflow** 按钮即可手动部署。
 
 </details>
 
 <details>
 <summary><strong>🌐 方式二：GitHub Pages 部署</strong></summary>
 
-支持通过 GitHub Actions 工作流将静态页面一键发布至 GitHub Pages。
+支持通过 GitHub Actions 工作流将静态页面发布至 GitHub Pages。
 
 **预置配置**
 
@@ -209,11 +213,15 @@ VITE_DEFAULT_API_URL=https://api.openai.com/v1
 VITE_DEFAULT_API_URL=https://api.openai.com/v1
 ```
 
-**部署**
+**初始部署**
 
 1. 在 GitHub 仓库的 **Settings → Pages** 中，将 **Build and deployment → Source** 设置为 **GitHub Actions**。
-2. 进入仓库顶部的 **Actions** 标签页，在左侧工作流列表中选择 **Deploy to GitHub Pages**。
-3. 点击右侧的 **Run workflow** 下拉按钮，分支选择 `main`，然后点击绿色的 **Run workflow** 按钮开始构建部署。
+2. 进入仓库顶部的 **Actions** 标签页，在左侧选择 **Deploy to GitHub Pages**，点击右侧的 **Run workflow** 下拉按钮（分支选择 `main`），点击绿色的 **Run workflow** 按钮完成首次构建部署。
+
+**更新方式**
+
+- **自动更新**：只有在本仓库发布了正式版本（即包含新 Release / 版本号变动）时，在你的 Fork 页面点击 **Sync fork** 才会自动触发构建并部署至 GitHub Pages；日常的普通代码提交不会触发部署。
+- **手动触发**：若需立即部署最新代码（包括未发布正式版本的日常提交），可进入仓库顶部的 **Actions** 标签页，在左侧选择 **Deploy to GitHub Pages**，点击右侧的 **Run workflow** 下拉按钮（分支选择 `main`），点击绿色的 **Run workflow** 按钮即可手动部署。
 
 </details>
 
@@ -388,14 +396,16 @@ npm run build
 |------|------|------|
 | `apiUrl` | API Base URL | `?apiUrl=https://api.example.com/v1` |
 | `apiKey` | API Key | `?apiKey=sk-xxxx` |
-| `model` | 模型 ID（未传时按 apiMode 使用默认模型） | `?model=gpt-image-2` |
+| `model` | 模型 ID | `?model=gpt-image-2.5-sunburst` |
+| `imageGenerationModel` | Responses API 的图像生成工具模型，留空使用 API 默认值 | `?imageGenerationModel=gpt-image-2.5-sunburst` |
 | `apiMode` | `images` 或 `responses`，默认 `images` | `?apiMode=responses` |
-| `profileName` | 配置名称，默认"URL 参数配置" | `?profileName=我的配置` |
+| `profileName` | 配置名称，默认“URL 参数配置” | `?profileName=我的配置` |
 | `reasoningEffort` | Responses API 推理强度 | `?reasoningEffort=high` |
 | `codexCli` | Codex CLI 兼容模式 | `?codexCli=true` |
 | `streamImages` | 流式传输 | `?streamImages=true` |
 | `streamPartialImages` | 中间步骤图像数（需配合 streamImages） | `?streamPartialImages=2` |
 | `profileId` | 目标配置 ID；匹配到同 ID 配置时直接更新 | `?profileId=my-service` |
+| `transparentBackgroundMethod` | 透明背景实现方式：`api`（原生）或 `local`（本地后处理） | `?transparentBackgroundMethod=local` |
 
 集成示例（New API 聊天系统）：
 
@@ -412,7 +422,7 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
 
 使用 JSON 文件或分享链接提供预置配置时，JSON 对象包含两个顶层字段：
 
-- **`customProviders`**（数组）：自定义供应商定义。如果只用 OpenAI 兼容或 fal.ai，此数组留空 `[]` 即可。
+- **`customProviders`**（数组）：自定义供应商定义。如果只使用内置供应商（OpenAI 兼容、sub2api（异步）或 fal.ai），此数组留空 `[]` 即可。
 - **`profiles`**（数组）：预置的 API 配置列表。每项对应用户配置页中的一个配置条目。
 
 ### 配置列表字段说明（`profiles`）
@@ -422,14 +432,16 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
 | `id` | 定向更新时填写 | 用于标识配置条目：若后续链接携带相同 ID（查询参数 `profileId`、`settings` 链接或预置配置 JSON 中的 `id`），将直接更新该条目而非新建。应用内普通分享链接会省略此字段。 |
 | `name` | 是 | 配置名称，方便用户识别。 |
 | `description` | 否 | 配置说明，支持 Markdown；填写后会以说明卡片显示在“当前配置”下方。文本可选中和复制，其中的链接可点击。 |
-| `provider` | 是 | 供应商类型。`"openai"` 为 OpenAI 兼容接口，`"fal"` 为 fal.ai，其他值引用 `customProviders` 中具有相同 ID 的供应商定义。 |
+| `provider` | 是 | 供应商类型。`"openai"` 为 OpenAI 兼容接口，`"sb2api-async"` 为 sub2api（异步），`"fal"` 为 fal.ai，其他值引用 `customProviders` 中具有相同 ID 的供应商定义。 |
 | `baseUrl` | 是 | API 基础地址（Base URL）。未以 `/` 结尾时遵循 OpenAI 规则自动补齐 `/v1` 前缀；以 `/` 结尾时直接基于该地址请求接口，不补 `/v1`；fal.ai 可留空。 |
 | `apiKey` | 否 | API Key。建议省略，让用户导入后自行填写。 |
 | `model` | 是 | 默认模型 ID。 |
+| `imageGenerationModel` | 否 | Responses API 的 `image_generation` 工具模型，默认 `gpt-image-2.5-sunburst`；也可使用 `gpt-image-2.5-flare`。留空时不发送工具模型 ID，保持 API 默认值。 |
 | `apiMode` | 否 | `"images"` 或 `"responses"`，默认 `"images"`。 |
 | `isDefault` | 否 | 有多个配置时，为默认项设置 `true`（只能有一个）；只有一个配置时不填。默认项决定首次使用时自动选中的配置；允许拖动排序和删除（受保护策略控制）。 |
 | `timeout` | 否 | 请求超时秒数，默认 600。 |
 | `apiProxy` | 否 | 是否走部署端 API 代理，默认 `false`。 |
+| `transparentBackgroundMethod` | 否 | 透明背景实现方式：`"api"`（API 原生）或 `"local"`（本地后处理）。OpenAI 兼容配置默认 `"api"`，fal.ai 默认 `"local"`，自定义服务商若生成和编辑请求都映射了 `$params.background` 模板变量则默认 `"api"`，否则默认 `"local"`。 |
 
 ### 示例：仅 OpenAI 兼容
 
@@ -443,13 +455,13 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
       "description": "使用前请阅读 [接口说明](https://example.com/docs)。",
       "provider": "openai",
       "baseUrl": "https://api.openai.com/v1",
-      "model": "gpt-image-2"
+      "model": "gpt-image-2.5-sunburst"
     }
   ]
 }
 ```
 
-### 示例：OpenAI 兼容 + fal.ai 多配置
+### 示例：OpenAI 兼容 + sub2api + fal.ai 多配置
 
 ```json
 {
@@ -460,8 +472,15 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
       "name": "OpenAI",
       "provider": "openai",
       "baseUrl": "https://api.openai.com/v1",
-      "model": "gpt-image-2",
+      "model": "gpt-image-2.5-sunburst",
       "isDefault": true
+    },
+    {
+      "id": "sub2api-profile",
+      "name": "sub2api 异步",
+      "provider": "sb2api-async",
+      "baseUrl": "https://api.example.com/v1",
+      "model": "gpt-image-2.5-sunburst"
     },
     {
       "id": "fal-profile",
@@ -528,7 +547,7 @@ VITE_DEFAULT_API_URL=https://example.com/gpt-image-config.json
 **创建方式：**
 
 1. **在线体验中生成**：打开 [Vercel 在线体验](https://gpt-image-playground.cooksleep.dev) 或 [GitHub Pages 在线体验](https://cooksleep.github.io/gpt_image_playground)，进入 **设置 → API 配置 → 供应商类型 → 创建自定义供应商 → AI 一键生成与导入**，粘贴第三方 API 文档让 AI 生成配置。
-2. **应用内导出**：生成完成后，在 **API 配置 → 当前配置** 右侧点击"链接按钮"复制含 `?settings=` 参数的分享 URL，可直接用作环境变量值。
+2. **应用内导出**：生成完成后，在 **API 配置 → 当前配置** 右侧点击“链接按钮”复制含 `?settings=` 参数的分享 URL，可直接用作环境变量值。
 
 也可以参考 [自定义供应商 LLM 提示词](docs/custom-provider-llm-prompt.md)，将提示词和第三方 API 文档直接发给任意 LLM，手动获取完整 JSON。
 
@@ -577,7 +596,7 @@ VITE_DEFAULT_API_URL=https://example.com/gpt-image-config.json
       "name": "示例异步任务供应商",
       "provider": "custom-example-task",
       "baseUrl": "https://api.example.com/v1",
-      "model": "gpt-image-2",
+      "model": "gpt-image-2.5-sunburst",
       "apiMode": "images"
     }
   ]
@@ -610,11 +629,11 @@ VITE_DEFAULT_API_URL=https://example.com/gpt-image-config.json
 ## ⭐ Star History
 
 <div align="center">
-  <a href="https://www.star-history.com/#CookSleep/gpt_image_playground&Date">
+  <a href="https://www.star-history.com/?repos=CookSleep%2Fgpt_image_playground&type=date&legend=top-left">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=CookSleep/gpt_image_playground&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=CookSleep/gpt_image_playground&type=Date" />
-      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=CookSleep/gpt_image_playground&type=Date" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&theme=dark&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
+      <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=CookSleep/gpt_image_playground&type=date&legend=top-left&sealed_token=YDhR-bhWDaCuWPSxXgtqShoQoM84wroDOtJOM_4TtQsdxIYcQoVPIykb3dHxXo__YPI7b2HlcrMitDbXkJw0dQi68bJOx5xCCqyz8qVdokdcPKMOSbNWOhsDYv6FKKQW40xKkkOqjme8AnR-T9z3i6bq83j47rR6WiNC1n6uVaVf3Ksm8JOf0y9lpXpj" />
     </picture>
   </a>
 </div>

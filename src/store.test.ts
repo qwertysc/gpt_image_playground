@@ -4996,6 +4996,7 @@ describe('agent batch reference resolution', () => {
         model: DEFAULT_RESPONSES_MODEL,
         profiles: [responsesProfile],
         activeProfileId: responsesProfile.id,
+        agentApiConfigMode: 'off',
       }),
       prompt: '继续生成',
       inputImages: [],

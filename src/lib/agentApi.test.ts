@@ -66,7 +66,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     const result = await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'prompt' }] }],
@@ -146,7 +146,7 @@ describe('callAgentResponsesApi', () => {
     })
 
     await callAgentResponsesApi({
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, agentApiConfigMode: 'off' },
       profile,
       params: DEFAULT_PARAMS,
       input: [{ role: 'user', content: [{ type: 'input_text', text: 'edit' }] }],

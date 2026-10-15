@@ -1250,7 +1250,7 @@ export function mergePresetImportedSettings(
       ? mergePresetProfileSnapshot(previous, normalizedProfile, fields)
       : normalizedProfile
     if (!matched) return importedProfile
-    if (options.lockPresetParams) return { ...importedProfile, apiKey: matched.apiKey }
+    if (options.lockPresetParams) return { ...importedProfile, apiKey: matched.apiKey, selectedModel: matched.selectedModel }
     if (!previous) return { ...matched, baseUrl: importedProfile.baseUrl, isDefault: importedProfile.isDefault }
 
     const changed: Partial<ApiProfile> = {}

@@ -21,7 +21,7 @@ Surface: `src/lib/apiProfiles.ts`, `src/components/SettingsModal.tsx`, focused t
 ## CUS-IMAGE-ASYNC-001 — Native + deployment configuration
 
 - Stable image profile: `default-openai`, provider `sb2api-async`, Base URL `https://edge.1token-store.com`, Images API, direct, non-streaming, `transparentBackgroundMethod=local`.
-- Model list, in order: `gpt-image-2,gpt-image-2.5,gpt-image-2.5-flare,gpt-image-2.5-sunburst`. Default is the first item. Use upstream's native `selectedModel` selector/persistence; send one model, never the entire list. Keep unrelated preset parameters locked.
+- Model list, in order: `gpt-image-2,gpt-image-2.5,gpt-image-2.5-flare,gpt-image-2.5-sunburst`. Default is the first item. Use upstream's native `selectedModel` selector; send one model, never the entire list. Keep unrelated preset parameters locked. Adapt the locked startup merge in `mergePresetImportedSettings` to retain the browser's `selectedModel` as well as its API key: upstream v0.8.0 retains the choice during live edits but otherwise drops it when deployment presets reload. Cover all four models with/without a prior preset snapshot and repeated merges.
 - Enable only the existing `responseFormatB64Json=true` switch. No fork request/response implementation and no backend change. Async generation/editing, task polling and Base64/URL extraction remain upstream-native.
 - Stable text profile: `1token-agent`, `openai`, `gpt-6.1-sol`, same Base URL, Responses, `streamImages=true`, `streamPartialImages=0`.
 - Preserve browser-local API keys, profile/task references and accepted async-task recovery. Recovery requires acceptance plus durable task-ID storage, same origin/profile/key, and backend retention; it is not guaranteed before submission is persisted.

@@ -112,6 +112,26 @@ describe('1Token deployment preset', () => {
     }
   })
 
+  it.each(models.flatMap((model) => [false, true].map((snapshot) => ({ model, snapshot }))))('retains $model when locked presets reload (snapshot: $snapshot)', ({ model, snapshot }) => {
+    const current = hybridSettings()
+    current.profiles[0].selectedModel = model
+    current.profiles[0].apiKey = 'reload-fixture'
+    const first = mergePresetImportedSettings(current, preset, {
+      lockPresetParams: true,
+      previousPresetConfig: snapshot ? { profiles: normalizeSettings(preset).profiles, customProviders: [] } : null,
+    })
+    const second = mergePresetImportedSettings(first.settings, preset, {
+      lockPresetParams: true,
+      previousPresetConfig: first.presetConfig,
+    })
+    for (const settings of [first.settings, second.settings]) {
+      expect(settings.profiles[0].selectedModel).toBe(model)
+      expect(getActiveApiProfile(settings).model).toBe(model)
+      expect(getAgentImageApiProfile(settings)?.model).toBe(model)
+      expect(settings.profiles[0].apiKey).toBe('reload-fixture')
+    }
+  })
+
   it('falls back from an invalid selection without sending the comma-separated list', () => {
     const settings = hybridSettings()
     settings.profiles[0].selectedModel = 'invalid-model'

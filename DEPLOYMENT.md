@@ -1,57 +1,45 @@
 # 1Token Cloudflare deployment
 
-This public fork follows official `CookSleep/gpt_image_playground` Releases and deploys through Cloudflare Workers Builds.
-
-- Baseline: **v0.7.11** / `f14caf3115d17aae99372dbd25bb4cba43a631ec`.
-- Worker: `gpt-image-playground-1token-store`.
-- Domain: https://gpt-image-playground.1token-store.com
-- Policies: [customizations](docs/1token-customizations.md), [release sync](docs/upstream-sync.md).
+Baseline: **v0.8.0** / `864f101514a403a534227682bec9a1abab45eb60`.
+Worker: `gpt-image-playground-1token-store`.
+Domain: https://gpt-image-playground.1token-store.com
+Authority: [customizations](docs/1token-customizations.md), [upstream sync](docs/upstream-sync.md).
 
 ## Embedded profiles
 
-`gpt-image-config.1token.json` is compiled into the Vite bundle, not fetched as a standalone public JSON file. It must contain no API keys.
+`gpt-image-config.1token.json` is compiled into the JavaScript bundle; it is not a separately fetched public JSON file and must contain no API keys.
 
-| Role | ID | Provider | Model | Protocol |
+| Role | Stable ID | Provider | Model | Protocol |
 |---|---|---|---|---|
-| Gallery / Hybrid image executor | default-openai | sb2api-async | gpt-image-2 | Images async, non-streaming |
-| Agent text planner | 1token-agent | openai | gpt-5.6-sol | Responses, streaming |
+| Gallery / Hybrid image executor | default-openai | sb2api-async | gpt-image-2, gpt-image-2.5, gpt-image-2.5-flare, gpt-image-2.5-sunburst | Async Images, non-streaming |
+| Agent text planner | 1token-agent | openai | gpt-6.1-sol | Responses, streaming |
 
-Both use `https://edge.1token-store.com`. The empty text key may inherit the selected image key at request time only when the trusted-provider, normalized URL and effective-route checks pass. Explicit text keys override inheritance. Image transparency remains local post-processing.
+Both use `https://edge.1token-store.com`. Image defaults are `gpt-image-2`, local transparency and the native Base64 switch enabled. The selected image model remains user-selectable under locked presets. An empty text key inherits the image key at request time only under the trusted-provider/same-URL/same-route checks. Explicit text keys win; no key is copied into stored text settings.
 
-## Workers Builds
-
-Existing Git integration targets this fork and Worker. Check live branch/trigger settings before pushing; do not reconnect or modify credentials as an incidental upgrade step.
+## Cloudflare Workers Builds
 
 ```text
 Production branch: main
-Root directory: /
-Build command: npm ci && npm test && npm run build
+Root: /
+Build: npm ci && npm test && npm run build
 Production deploy: npx wrangler deploy
 Non-production deploy: npx wrangler versions upload
-Build variable: NODE_VERSION=20
 ```
 
-`npm run build` invokes `build:1token`, setting `VITE_DEFAULT_API_URL=./gpt-image-config.1token.json`, `VITE_SHOW_PRESET_CONFIG_ONLY=true` and `VITE_LOCK_PRESET_CONFIG_PARAMS=true`. `build:base` is the explicit unbranded escape hatch. Never use it for production acceptance by mistake.
+`npm run build` invokes `build:1token`, which enables `VITE_SHOW_PRESET_CONFIG_ONLY`, `VITE_LOCK_PRESET_CONFIG_PARAMS` and embeds the deployment JSON. `build:base` is deliberately unbranded. Keep the current cloud build environment; check the actual trigger commands/repository before pushing. GitHub Actions stays disabled. Do not activate the upstream desktop-release pipeline, Vercel/Pages or local Wrangler deployment.
 
-GitHub Actions stays disabled; upstream workflow files remain unchanged. Do not deploy via a second Actions/Vercel/Pages path or local Wrangler builds.
+Run tests/builds in Cloudflare, and real browser QA in Cloudflare Browser Run—not on the constrained control host. Temporary version-preview access needs authorization and restoration of both original subdomain flags. Uploading a candidate must not promote production traffic.
 
-## Existing browsers
+## Browser upgrade and acceptance
 
-Keep profile ID `default-openai` when changing the provider from `openai` to `sb2api-async`; locked-preset merging retains the user's browser-local API key. Existing tasks and pictures remain untouched. `agentPresetDefaultsVersion=1` prevents repeated Hybrid migration.
+Keep stable profile IDs, local keys, history, and `agentPresetDefaultsVersion=1`. Do not repeat the Hybrid migration. Defaults and missing legacy `autoCheckUpdate` fields are false; user opt-in remains possible. The client-download announcement/button are absent; the existing brand entry opens the official store in a new tab. PWA installation and upstream About attribution remain available.
 
-Async endpoints require Sub2API object storage to be enabled/configured. Accepted tasks return `task_id`; the application stores it in IndexedDB and restores polling after reload. Close the page only after acceptance and local task-ID persistence. Reopen using the same browser profile, origin and API key, without clearing site data. The backend default task TTL is 24 hours, refreshed on completion; image URL expiry depends on storage configuration. Downloaded local history and remote retention are different guarantees.
+v0.8.0 upgrades IndexedDB v3 to v4 and converts image data URLs to Blob records. Preserve upstream migration code and tests. Validate isolated old-data upgrade, multi-tab blocking/reload, decoded history images and data export. Recommend native backups for important data before promotion.
 
-## Acceptance
+Require exact-SHA full tests/build, decoded embedded defaults, fresh/legacy browser acceptance, no deployed secrets, and correct native model selection. Backend model availability/Base64 delivery and real async close/reopen are separate paid-provider gates; use only explicitly authorized test credentials, not customer keys.
 
-- Full test/build success for the exact candidate SHA through Workers Builds.
-- Fresh and existing browser settings retain the intended IDs, keys, Hybrid mode and independent streaming settings.
-- Authorized generation, editing and Hybrid image calls use async endpoints.
-- Close/reopen polls the same accepted task without another generation POST; resulting images download successfully.
-- Verify actual production asset/config after promotion, not only the green check.
-- Real provider tests require an authorized test credential and may incur usage; do not use customer keys or claim unperformed tests passed.
+## Production and rollback boundary
 
-## Rollback
+After preview acceptance, obtain production merge/promotion authorization. Deliver the validated tree while preserving main history. Record the current Worker version/deployment before promotion and verify the real domain/assets afterward.
 
-Record the current Worker deployment/version and asset before promotion. Verify that main receives the preview-validated tree without rewriting production history.
-
-Do not blindly restore a synchronous preset while accepted async tasks remain uncollected: task recovery requires the current profile provider to match the task's provider. Prefer a compatibility rollback retaining the async profile/key resolution, or retrieve affected results before changing it. Leave the enabled Sub2API backend, task records, object-storage images and browser data alone.
+Restoring an old Worker is not a browser-data rollback: old v0.7.11 may not open an upgraded v4 database. Before promotion, establish a validated compatible fallback or forward-fix path; do not clear website data or add an untested downgrade. Retain async profile/provider/key compatibility for accepted tasks and leave backend tasks/storage unchanged. No compatibility rollback package is claimed tested by this document.

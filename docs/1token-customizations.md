@@ -1,62 +1,50 @@
 # 1Token customization authority
 
-This is the authoritative inventory of intentional differences from `CookSleep/gpt_image_playground`. Each update starts from a clean official Release; do not mechanically merge upstream main or replay old trigger commits.
+Baseline: **v0.8.0**, official commit `864f101514a403a534227682bec9a1abab45eb60`.
+Upstream: https://github.com/CookSleep/gpt_image_playground
+Fork: https://github.com/qwertysc/gpt_image_playground
 
-## Current baseline
+Start from a clean official Release and rematerialize this inventory; do not replay historical commits wholesale. These are intended behaviors, not claims of completed deployment.
 
-- Upstream: **v0.7.11**, commit `f14caf3115d17aae99372dbd25bb4cba43a631ec`.
-- Upstream repository: https://github.com/CookSleep/gpt_image_playground
-- Fork repository: https://github.com/qwertysc/gpt_image_playground
+## CUS-AGENT-HYBRID-001 — Retained/adapted
 
-## CUS-AGENT-HYBRID-001 — Hybrid defaults and durable migration
+New users default to Hybrid. Complete dual-role deployment presets migrate legacy settings once. Preserve durable `agentPresetDefaultsVersion=1`; reload and preset removal/re-adoption must not overwrite later user choices. Incomplete presets cannot borrow existing user profiles to qualify. Preserve upstream native preset behavior without adding a forced Agent-mode field to our preset.
 
-New users default to Hybrid. Legacy users adopt the dual-profile preset once. Preserve `agentPresetDefaultsVersion=1`; later reloads or preset removal/re-adoption must not overwrite an explicit user choice. Async enablement does not bump this migration version.
+Surface: `src/lib/apiProfiles.ts`, `src/store.ts`, `src/lib/persistedState.ts` and tests.
 
-Surface: `src/lib/apiProfiles.ts`, `src/store.ts`, `src/lib/persistedState.ts` and their existing tests. Keep upstream request builders, function schemas and IndexedDB schema intact.
+## CUS-AGENT-KEY-001 — Retained/adapted
 
-## CUS-AGENT-KEY-001 — One browser key, narrow request-time inheritance
+An empty Hybrid text key may inherit the selected image key only if the text provider is `openai`, image provider is built-in `openai` or `sb2api-async`, normalized Base URLs and effective direct/proxy routes match, and the image key is nonempty. Explicit text keys win. Resolve a single selected text model before returning the effective request profile. Never persist duplicated secrets or trust arbitrary custom providers. Settings availability uses the same effective-key resolver.
 
-An empty Hybrid text key may inherit the selected image key only when:
+Surface: `src/lib/apiProfiles.ts`, `src/components/SettingsModal.tsx`, focused tests.
 
-1. the text provider is `openai`;
-2. the image provider is the built-in `openai` or `sb2api-async`;
-3. normalized Base URLs and effective direct/proxy routes match;
-4. the image key is non-empty.
+## CUS-IMAGE-ASYNC-001 — Native + deployment configuration
 
-An explicit text key always wins. Never extend this rule to arbitrary custom providers. Inheritance returns an effective request profile; it does not copy secrets into stored text profiles, deployment presets, source, logs or static assets. Settings availability uses the same effective-key resolution.
+- Stable image profile: `default-openai`, provider `sb2api-async`, Base URL `https://edge.1token-store.com`, Images API, direct, non-streaming, `transparentBackgroundMethod=local`.
+- Model list, in order: `gpt-image-2,gpt-image-2.5,gpt-image-2.5-flare,gpt-image-2.5-sunburst`. Default is the first item. Use upstream's native `selectedModel` selector; send one model, never the entire list. Keep unrelated preset parameters locked. Adapt the locked startup merge in `mergePresetImportedSettings` to retain the browser's `selectedModel` as well as its API key: upstream v0.8.0 retains the choice during live edits but otherwise drops it when deployment presets reload. Cover all four models with/without a prior preset snapshot and repeated merges.
+- Enable only the existing `responseFormatB64Json=true` switch. No fork request/response implementation and no backend change. Async generation/editing, task polling and Base64/URL extraction remain upstream-native.
+- Stable text profile: `1token-agent`, `openai`, `gpt-6.1-sol`, same Base URL, Responses, `streamImages=true`, `streamPartialImages=0`.
+- Preserve browser-local API keys, profile/task references and accepted async-task recovery. Recovery requires acceptance plus durable task-ID storage, same origin/profile/key, and backend retention; it is not guaranteed before submission is persisted.
 
-Surface: `src/lib/apiProfiles.ts`, `src/components/SettingsModal.tsx`, `src/lib/apiProfiles.test.ts`.
+Surface: `gpt-image-config.1token.json`, `src/lib/oneTokenPreset.test.ts`, upstream async tests.
 
-## CUS-IMAGE-ASYNC-001 — Native Sub2API asynchronous images
+## CUS-WEB-UX-001 — New small customization
 
-- Retain image profile ID **`default-openai`**, preserving existing browser keys and references.
-- Use built-in provider **`sb2api-async`**, model **`gpt-image-2`**, Base URL **`https://edge.1token-store.com`**, Images API, non-streaming and direct routing.
-- Gallery and Hybrid image execution use `/v1/images/generations/async` or `/v1/images/edits/async`, then poll `/v1/images/tasks/{task_id}`.
-- Reuse upstream submission, polling and restart recovery. Do not create a second async engine or replay old synchronous tasks.
-- Explicit `transparentBackgroundMethod=local` preserves the existing background-removal workflow. A software upgrade must not silently switch the deployed model to GPT Image 2.5 or enable API-native transparency.
-- Agent text retains profile **`1token-agent`**, **`gpt-5.6-sol`**, Responses API, **`streamImages=true`** and **`streamPartialImages=0`**. Image streaming remains false. Do not remove UI controls.
+- Remove the desktop-client recommendation from `public/announcements.json`; retain general announcements and essential storage-upgrade/error notices.
+- Do not render Header's desktop-download button, including Windows wide screens. Keep PWA install and other controls.
+- Both existing Header brand-link branches open `https://1token-store.com` with `_blank` and `noopener noreferrer`. Preserve About/license attribution.
+- `autoCheckUpdate` defaults and missing/invalid persisted-field fallbacks are false. Keep manual checking and user opt-in; do not overwrite an explicit true on reload/import. Current v0.7.11 settings have no field, so no extra migration marker is needed.
 
-Surface: `gpt-image-config.1token.json`, `src/lib/oneTokenPreset.test.ts`, existing async tests in `src/lib/api.test.ts` / `src/store.test.ts`.
+Surface: `src/components/Header.tsx`, `public/announcements.json`, `src/lib/apiProfiles.ts` and tests.
 
-### Recovery boundary
+## CUS-DEPLOY-1TOKEN-001 — Retained
 
-Close/reopen is supported after the server accepts the task and its ID is persisted in IndexedDB. Use the same browser profile, origin, API profile and API key; do not clear site data. This does not guarantee recovery if the page closes during upload or before the task-ID write completes. The backend's task/URL retention and server-restart behavior are separate limits.
-
-## CUS-DEPLOY-1TOKEN-001 — Deterministic build, target and branding
-
-- `npm run build` embeds `gpt-image-config.1token.json`; `build:base` remains the unbranded escape hatch.
-- Preserve preset-only and locked-parameter policies. Locked preset updates keep each user's local key.
-- Worker: `gpt-image-playground-1token-store`; domain: `gpt-image-playground.1token-store.com`.
-- Cloudflare Workers Builds is authoritative; keep GitHub Actions disabled and do not enable upstream Vercel/Pages deployments.
-- README retains TokenToken, removes the agreed sponsorship/affiliate sections, and preserves upstream license and attribution.
-- Keep real `.env` files ignored; the harmless upstream `.env.test` remains tracked.
+`npm run build` embeds the 1Token preset with preset-only and locked-parameter policies. `build:base` remains the explicit unbranded escape hatch. Worker/domain and Cloudflare Workers Builds remain unchanged; GitHub Actions is disabled, and no desktop/Vercel/Pages publishing is activated. Preserve TokenToken README content, remove agreed sponsorship/affiliate sections, preserve MIT and upstream attribution. Ignore real env files while retaining harmless upstream `.env.test`.
 
 ## Acceptance and rollback
 
-1. New and existing browsers need only one image key; text/image routing remains separated.
-2. Provider migration keeps `default-openai`, browser key, tasks and images; no IndexedDB schema change.
-3. Wrong providers, different URLs or different effective proxy routes cannot inherit keys.
-4. Accepted async tasks resume polling after reload without a second submission; both generation and editing work.
-5. Test/build and exact-SHA Cloudflare preview pass before production promotion.
-6. Final main tree must equal the preview-validated tree; no force-push.
-7. Rollback retains async task lookup compatibility. Returning the same profile ID to `openai` can strand uncollected async tasks; preserve a compatible async profile/key lookup or retrieve affected results first.
+Require exact-SHA Cloudflare full tests/build plus Browser Run fresh/legacy configuration, model persistence, Windows/mobile UI and history-read/export checks. Provider tests require separately authorized credentials/usage; mocked tests do not prove backend model availability or actual response format.
+
+Keep upstream v0.8.0 IndexedDB v4 and Blob migrations unchanged; do not add fork schema changes. This supersedes the older v0.7.11 no-schema-change assumption. Back up important browser data before promotion. A v0.7.11 Worker cannot be assumed compatible with an already-upgraded v4 database: validate a compatible fallback or forward-fix path before promotion, never clear site data as rollback. Preserve async task/provider/key lookup compatibility.
+
+Production merge/promotion requires separate authorization; final main tree must equal the preview-validated tree without force-push.

@@ -1,28 +1,16 @@
 # Upstream release sync
 
-`origin/main` is the customized production branch; `upstream` is the official reference. Build updates from a clean official Release tag, not a long-lived customized merge tree.
+`origin/main` is the customized production branch. The current source baseline is official **v0.8.0** / `864f101514a403a534227682bec9a1abab45eb60`.
 
-1. Inspect remote main, the current deployment, release notes and applicable Issues/PRs.
-2. Pin the official tag/commit and read [customization authority](1token-customizations.md), including later approved config changes in Git history.
-3. Use the isolated `hermes_sc` Git identity and a separate worktree from the clean tag.
-4. Re-evaluate each customization as upstream-native, retained, adapted or obsolete. Preserve new upstream behavior outside our deliberate deployment settings; do not replay empty trigger commits.
-5. Keep the two profile IDs, local keys, one-time Hybrid migration marker and browser history. Image provider is `sb2api-async`, image model is `gpt-image-2`; Agent text remains `openai` / `gpt-5.6-sol` / Responses streaming.
-6. Preserve narrow trusted-provider, same-URL, same-effective-route key inheritance. Never use a generic custom-provider compatibility predicate for sharing credentials.
-7. Preserve local transparency through the preset, deterministic build scripts, locked/preset-only policies, Worker/domain, README TokenToken content, MIT and attribution.
-8. Keep harmless upstream test environment files. Do not install dependencies or run Node/Go/Rust tests/builds on the control host; use Cloudflare Workers Builds.
-9. Run focused regression coverage and full `npm test` / `npm run build` in the existing Cloudflare preview pipeline. Verify embedded defaults, secret absence, fresh/legacy browser behavior and asynchronous close/reopen recovery with an authorized test key.
-10. Integrate the candidate with production history without force-pushing main. Verify the final delivered tree equals the preview-validated tree so old omitted changes cannot silently return.
-11. Promote only after preview acceptance; verify the production build, deployment, asset hash and actual settings separately.
-12. Retain rollback evidence and async task retrieval compatibility; do not clear browser data, disable the backend or remove accepted tasks as a frontend rollback step.
+1. Read remote main, live embedded configuration and [customization authority](1token-customizations.md). Recheck the latest official Release immediately before branching; do not silently change an approved target.
+2. With isolated `hermes_sc` identity, create a clean official-tag worktree and prove tree equality. Reapply approved behavior, not historical commits/trigger commits wholesale.
+3. Retain the two stable profile IDs, local keys, one-time Hybrid marker, trusted same-route key inheritance and native async recovery. The inventory is authoritative for current model IDs and streaming/Base64 defaults.
+4. Prefer upstream-native capabilities: v0.8.0 already supports comma-separated models plus `selectedModel`, locked selection preservation, Base64, announcements and update checking. Customize only the prescribed configuration/UI defaults, not request builders.
+5. Preserve upstream DB v4/Blob migrations and all unrelated tests; do not add fork schema changes. Check old-data read/export and database downgrade constraints before promising rollback.
+6. Keep deterministic 1Token build scripts, preset locks, Worker/domain, README cleanup/TokenToken, MIT and attribution. Keep `.env.test`, ignore real secrets, keep GitHub Actions disabled.
+7. Use Cloudflare Workers Builds for full `npm test` and `npm run build`. Do not install/build on the control host. Browser acceptance runs in Cloudflare Browser Run; provider charges need separate approval.
+8. Verify preview branch uses `versions upload`, not production deploy. Bind tests, asset/config and browser evidence to the exact candidate SHA. Restore any authorized temporary preview visibility.
+9. Integrate production history without force-pushing and ensure the final delivered tree equals the accepted tree. Merge/promotion requires separate approval. Verify production independently after promotion.
+10. Preserve async task lookup and browser-data compatibility in rollback/forward repair. Do not clear site data, disable the backend, or delete accepted tasks.
 
-## Recurring checks
-
-- Stable `default-openai` / `1token-agent` IDs and browser keys.
-- Images are asynchronous and non-streaming; Agent text remains streaming.
-- New model defaults do not override the deployed `gpt-image-2` selection.
-- No repeated Hybrid migration, no IndexedDB schema change, no replay of historical tasks.
-- No credentials in presets/source/builds.
-- API/task polling/result downloads work on the deployed route, without stale Service Worker polling responses.
-- Main is not promoted by a preview build; Cloudflare remains the sole deployment authority.
-
-Keep compatibility corrections explicit and small. A newly published Release is not automatically permission to add unrelated provider fixes, model migrations, UI changes or CI systems.
+Keep this a small fork: no extra CI platform, provider engine, credentials or unrelated UI redesign. The previous fixed `gpt-image-2`/`gpt-5.6-sol` restriction is superseded only by the explicitly approved four-image-model/`gpt-6.1-sol` configuration.

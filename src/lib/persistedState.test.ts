@@ -58,6 +58,14 @@ function fallback() {
 }
 
 describe('persisted state codec', () => {
+  it('persists the one-time Hybrid migration marker and rejects invalid values', () => {
+    const persisted = createPersistedState({ ...source(), agentPresetDefaultsVersion: 1 })
+    const restored = normalizePersistedState(JSON.parse(JSON.stringify(persisted)), fallback())
+    expect(restored?.state.agentPresetDefaultsVersion).toBe(1)
+    expect(normalizePersistedState({ agentPresetDefaultsVersion: -1 }, fallback())?.state.agentPresetDefaultsVersion).toBe(0)
+    expect(normalizePersistedState({ agentPresetDefaultsVersion: 'invalid' }, fallback())?.state.agentPresetDefaultsVersion).toBe(0)
+  })
+
   it.each([undefined, 'custom-image-model', '', '   '])('restores profile and legacy top-level tool model %s without autofilling', (imageGenerationModel) => {
     const profile = { apiMode: 'responses', model: 'legacy-text-model', ...(imageGenerationModel === undefined ? {} : { imageGenerationModel }) }
     for (const settings of [profile, { profiles: [profile] }]) {

@@ -23,8 +23,8 @@ import type {
   StoredImageThumbnail,
 } from './types'
 import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_PARAMS } from './types'
-import { DEFAULT_SETTINGS, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, mergeImportedSettings, mergePresetImportedSettings, normalizeSettings, resolveApiProfileModel, splitModelList, validateApiProfile } from './lib/apiProfiles'
-import { enforcePresetConfigPolicy, getPresetConfig, getPresetProfileIds, getPresetProviderIds, isPresetConfigDeletionPrevented, isPresetConfigOnlyEnabled, isPresetConfigParamsLocked, isPresetProfile, isPresetProviderDeletionPrevented } from './lib/presetConfig'
+import { DEFAULT_SETTINGS, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, isAgentTextApiProfile, mergeImportedSettings, mergePresetImportedSettings, normalizeSettings, resolveApiProfileModel, splitModelList, validateApiProfile } from './lib/apiProfiles'
+import { enforcePresetConfigPolicy, getDefaultPresetProfileId, getPresetConfig, getPresetProfileIds, getPresetProviderIds, isPresetConfigDeletionPrevented, isPresetConfigOnlyEnabled, isPresetConfigParamsLocked, isPresetProfile, isPresetProviderDeletionPrevented } from './lib/presetConfig'
 import { dismissAllTooltips } from './lib/tooltipDismiss'
 import { getTaskPromptText, remapImageMentionsForOrder, replaceImageMentionsForApi, stripImageMentionMarkers } from './lib/promptImageMentions'
 import {
@@ -83,6 +83,7 @@ import { tauriStorage } from './lib/tauriStorage'
 const FAL_RECOVERY_POLL_MS = 10_000
 const CUSTOM_RECOVERY_POLL_MS = 10_000
 const SUPPORT_PROMPT_IMAGE_THRESHOLD = 50
+const AGENT_PRESET_DEFAULTS_VERSION = 1
 const falRecoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const customRecoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const openAIWatchdogTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -295,6 +296,7 @@ interface AppState {
   // 设置
   settings: AppSettings
   previousPresetConfig: PresetConfig | null
+  agentPresetDefaultsVersion: number
   setSettings: (s: Partial<AppSettings>) => void
   setPresetImportedSettings: (
     importedSettings: Partial<AppSettings> | unknown,
@@ -610,6 +612,7 @@ export const useStore = create<AppState>()(
       // Settings
       settings: { ...DEFAULT_SETTINGS },
       previousPresetConfig: null,
+      agentPresetDefaultsVersion: 0,
       dismissedPresetProfileIds: [],
       dismissPresetProfile: (id) => set((state) => ({
         dismissedPresetProfileIds: state.dismissedPresetProfileIds.includes(id)
@@ -693,14 +696,32 @@ export const useStore = create<AppState>()(
             previousPresetConfig: state.previousPresetConfig,
             usedPresetProfileIds: state.tasks.flatMap((task) => task.apiProfileId ? [task.apiProfileId] : []),
           })
+          const imported = normalizeSettings(transform?.(merged.settings) ?? merged.settings)
+          const presetConfig = getPresetConfig()
+          const presetTextProfile = presetConfig?.profiles.find(isAgentTextApiProfile) ?? null
+          const presetImageProfile = presetConfig?.profiles.find((profile) => profile.id === getDefaultPresetProfileId()) ?? null
+          const hybridSettings = normalizeSettings({
+            ...imported,
+            agentApiConfigMode: 'hybrid',
+            agentTextProfileId: presetTextProfile?.id,
+            agentImageProfileId: presetImageProfile?.id,
+          })
+          const firstPresetAdoption = state.agentPresetDefaultsVersion < AGENT_PRESET_DEFAULTS_VERSION &&
+            Boolean(presetTextProfile) &&
+            Boolean(presetImageProfile) &&
+            presetImageProfile?.id !== presetTextProfile?.id &&
+            presetImageProfile?.apiMode === 'images' &&
+            getAgentTextApiProfile(hybridSettings)?.id === presetTextProfile?.id &&
+            getAgentImageApiProfile(hybridSettings)?.id === presetImageProfile?.id
           const settings = normalizeSettings(enforcePresetConfigPolicy(
-            normalizeSettings(transform?.(merged.settings) ?? merged.settings),
+            firstPresetAdoption ? hybridSettings : imported,
             { dismissedPresetProviderIds: effectiveDismissedPresetProviderIds },
           ))
           const shouldClearReusedProfile = state.reusedTaskApiProfileId && settings.activeProfileId === state.reusedTaskApiProfileId
           return {
             settings,
             previousPresetConfig: getPresetConfig() ? merged.presetConfig : null,
+            agentPresetDefaultsVersion: firstPresetAdoption ? AGENT_PRESET_DEFAULTS_VERSION : state.agentPresetDefaultsVersion,
             dismissedPresetProfileIds,
             dismissedPresetProviderIds,
             reusedTaskApiProfileId: shouldClearReusedProfile ? null : state.reusedTaskApiProfileId,

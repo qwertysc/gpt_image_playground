@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 import { DEFAULT_PARAMS } from './types'
-import { createDefaultFalProfile, createDefaultOpenAIProfile, DEFAULT_RESPONSES_MODEL, DEFAULT_SETTINGS, normalizeSettings } from './lib/apiProfiles'
+import { createDefaultFalProfile, createDefaultOpenAIProfile, DEFAULT_RESPONSES_MODEL, DEFAULT_SETTINGS, getAgentTextApiProfile, normalizeSettings } from './lib/apiProfiles'
 import type { AgentConversation, ExportData, StoredImage, StoredImageThumbnail, TaskRecord } from './types'
 import { getSelectedImageMentionLabel } from './lib/promptImageMentions'
 import { hasActiveDataOperations, hasInterruptibleOperations, trackDataTransfer } from './lib/dataOperations'
@@ -1006,9 +1006,55 @@ describe('input persistence setting', () => {
 })
 
 describe('preset deletion state', () => {
+  const hybridPreset = (provider = 'sb2api-async') => ({
+    customProviders: [],
+    profiles: [
+      createDefaultOpenAIProfile({ id: 'default-openai', provider, isDefault: true, baseUrl: 'https://edge.example.com', model: 'gpt-image-2', apiMode: 'images' }),
+      createDefaultOpenAIProfile({ id: '1token-agent', baseUrl: 'https://edge.example.com', model: 'gpt-6.1-sol', apiMode: 'responses' }),
+    ],
+  })
+
+  it.each(['openai', 'sb2api-async'])('adopts a complete %s preset once and preserves later user mode choices', async (provider) => {
+    const preset = hybridPreset(provider)
+    useStore.setState({
+      settings: normalizeSettings({ ...DEFAULT_SETTINGS, profiles: [{ ...preset.profiles[0], apiKey: 'migration-fixture' }], activeProfileId: 'default-openai', agentApiConfigMode: 'off' }),
+      previousPresetConfig: null, agentPresetDefaultsVersion: 0, tasks: [],
+    })
+    setPresetConfig(preset)
+    await useStore.getState().setPresetImportedSettings(preset)
+    expect(useStore.getState().agentPresetDefaultsVersion).toBe(1)
+    expect(useStore.getState().settings).toMatchObject({ agentApiConfigMode: 'hybrid', agentTextProfileId: '1token-agent', agentImageProfileId: 'default-openai' })
+    expect(getAgentTextApiProfile(useStore.getState().settings)?.apiKey).toBe('migration-fixture')
+    expect(useStore.getState().settings.profiles.find((p) => p.id === '1token-agent')?.apiKey).toBe('')
+    useStore.setState({ settings: normalizeSettings({ ...useStore.getState().settings, agentApiConfigMode: 'native' }) })
+    setPresetConfig(null)
+    await useStore.getState().setPresetImportedSettings({ customProviders: [], profiles: [] })
+    setPresetConfig(preset)
+    await useStore.getState().setPresetImportedSettings(preset)
+    expect(useStore.getState()).toMatchObject({ agentPresetDefaultsVersion: 1, settings: { agentApiConfigMode: 'native' } })
+  })
+
+  it.each(['image-only', 'text-only', 'wrong-image-mode'])('does not consume the migration marker for %s, even with existing user profiles', async (shape) => {
+    const complete = hybridPreset()
+    const incomplete = hybridPreset()
+    if (shape === 'image-only') incomplete.profiles = incomplete.profiles.slice(0, 1)
+    if (shape === 'text-only') incomplete.profiles = incomplete.profiles.slice(1)
+    if (shape === 'wrong-image-mode') incomplete.profiles[0].apiMode = 'responses'
+    useStore.setState({
+      settings: normalizeSettings({ ...DEFAULT_SETTINGS, profiles: complete.profiles, activeProfileId: 'default-openai', agentApiConfigMode: 'off' }),
+      previousPresetConfig: null, agentPresetDefaultsVersion: 0, tasks: [],
+    })
+    setPresetConfig(incomplete)
+    await useStore.getState().setPresetImportedSettings(incomplete)
+    expect(useStore.getState()).toMatchObject({ agentPresetDefaultsVersion: 0, settings: { agentApiConfigMode: 'off' } })
+    setPresetConfig(complete)
+    await useStore.getState().setPresetImportedSettings(complete)
+    expect(useStore.getState()).toMatchObject({ agentPresetDefaultsVersion: 1, settings: { agentApiConfigMode: 'hybrid' } })
+  })
+
   afterEach(() => {
     setPresetConfig(null)
-    useStore.setState({ previousPresetConfig: null })
+    useStore.setState({ previousPresetConfig: null, agentPresetDefaultsVersion: 0 })
   })
 
   it('removes an untouched preset after deployment removes it', async () => {
@@ -5143,6 +5189,7 @@ describe('agent batch reference resolution', () => {
         model: DEFAULT_RESPONSES_MODEL,
         profiles: [responsesProfile],
         activeProfileId: responsesProfile.id,
+        agentApiConfigMode: 'off',
       }),
       prompt: '继续生成',
       inputImages: [],

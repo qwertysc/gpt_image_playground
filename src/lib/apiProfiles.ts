@@ -19,7 +19,7 @@ import type {
 } from '../types'
 import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_STREAM_PARTIAL_IMAGES, DEFAULT_ZIP_DOWNLOAD_ROUTES, ZIP_DOWNLOAD_ROUTE_VALUES } from '../types'
 import { customProviderSupportsNativeTransparentBackground } from './customProviderCapabilities'
-import { shouldUseApiProxy } from './devProxy'
+import { normalizeBaseUrl, shouldUseApiProxy } from './devProxy'
 import { normalizeReasoningEffort, normalizeStreamPartialImages, parseDefaultApiUrl } from './defaultApiUrl'
 import { readRuntimeEnv } from './runtimeEnv'
 import { isImportableConfigUrl } from './importableConfigUrl'
@@ -739,7 +739,7 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
     retryMode: normalizeRetryMode(record.retryMode, record.alwaysShowRetryButton === true),
     allowPromptRewrite: typeof record.allowPromptRewrite === 'boolean' ? record.allowPromptRewrite : false,
     taskCompletionNotification: typeof record.taskCompletionNotification === 'boolean' ? record.taskCompletionNotification : false,
-    autoCheckUpdate: typeof record.autoCheckUpdate === 'boolean' ? record.autoCheckUpdate : true,
+    autoCheckUpdate: typeof record.autoCheckUpdate === 'boolean' ? record.autoCheckUpdate : false,
     writeLogFile: typeof record.writeLogFile === 'boolean' ? record.writeLogFile : true,
     enterSubmit: typeof record.enterSubmit === 'boolean' ? record.enterSubmit : false,
     uiFont: normalizeFontMode(record.uiFont),
@@ -769,8 +769,16 @@ export function normalizeSettings(input: Partial<AppSettings> | unknown): AppSet
 export function getAgentTextApiProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {
   const normalized = normalizeSettings(settings)
   if (normalized.agentApiConfigMode === 'off') return getActiveApiProfile(normalized)
-  const profile = normalized.profiles.find((item) => item.id === normalized.agentTextProfileId)
-  return profile ? resolveApiProfileModel(profile) : null
+  const selected = normalized.profiles.find((item) => item.id === normalized.agentTextProfileId)
+  const profile = selected ? resolveApiProfileModel(selected) : null
+  if (!profile || normalized.agentApiConfigMode !== 'hybrid' || profile.apiKey.trim()) return profile
+
+  const imageProfile = normalized.profiles.find((item) => item.id === normalized.agentImageProfileId)
+  // 仅信任同 URL、同有效路由的内置图像适配器，不持久化复制凭据。
+  if (profile.provider !== 'openai' || !imageProfile || !['openai', 'sb2api-async'].includes(imageProfile.provider) || !imageProfile.apiKey.trim()) return profile
+  if (normalizeBaseUrl(profile.baseUrl) !== normalizeBaseUrl(imageProfile.baseUrl)) return profile
+  if (shouldUseApiProxy(profile.apiProxy) !== shouldUseApiProxy(imageProfile.apiProxy)) return profile
+  return { ...profile, apiKey: imageProfile.apiKey }
 }
 
 export function getAgentImageApiProfile(settings: Partial<AppSettings> | unknown): ApiProfile | null {
@@ -1328,7 +1336,7 @@ export const DEFAULT_SETTINGS: AppSettings = normalizeSettings({
   retryMode: 'new',
   allowPromptRewrite: false,
   taskCompletionNotification: false,
-  autoCheckUpdate: true,
+  autoCheckUpdate: false,
   writeLogFile: true,
   enterSubmit: false,
   showBatchPrompt: false,
@@ -1343,7 +1351,7 @@ export const DEFAULT_SETTINGS: AppSettings = normalizeSettings({
   agentMaxToolRounds: DEFAULT_AGENT_MAX_TOOL_ROUNDS,
   agentWebSearch: false,
   agentMathFormattingPrompt: true,
-  agentApiConfigMode: 'off',
+  agentApiConfigMode: 'hybrid',
   agentTextProfileId: null,
   agentImageProfileId: null,
 })

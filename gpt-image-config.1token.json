@@ -4,7 +4,7 @@
     {
       "id": "default-openai",
       "name": "1Token-store 生图",
-      "description": "画廊和 Agent 图像工具使用异步 Images API，可在首页切换 gpt-image-2、gpt-image-2.5、gpt-image-2.5-flare、gpt-image-2.5-sunburst，默认 gpt-image-2。提交成功并保存任务 ID 后，可在同一浏览器重新打开页面查询结果；请勿清理网站数据或更换 API Key。API Key 仅保存在浏览器本地，并由同源 Agent 文本配置安全复用。",
+      "description": "[1Token-store](https://1token-store.com) 是一家稳定高效的 AI 聚合平台，支持 GPT、Claude、gpt-image-2/2.5 等主流模型，兼容 Codex、OpenAI SDK、Claude Code等常用工具。参考 [使用文档](https://doc.1token-store.com/guide/token-token) 申请API Key即可在线生图。",
       "provider": "sb2api-async",
       "baseUrl": "https://edge.1token-store.com",
       "model": "gpt-image-2,gpt-image-2.5,gpt-image-2.5-flare,gpt-image-2.5-sunburst",

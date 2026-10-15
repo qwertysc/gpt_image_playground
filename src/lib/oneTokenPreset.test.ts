@@ -158,7 +158,7 @@ describe('1Token request-time Hybrid key inheritance', () => {
     const settings = hybridSettings()
     settings.profiles[0].provider = provider
     settings.profiles[0].apiKey = 'image-fixture'
-    settings.profiles[0].baseUrl = 'edge.1token-store.com/'
+    settings.profiles[0].baseUrl = 'edge.1token-store.com'
     expect(getAgentTextApiProfile(settings)?.apiKey).toBe('image-fixture')
     expect(settings.profiles[1].apiKey).toBe('')
     settings.profiles[1].apiKey = 'explicit-text-fixture'
@@ -169,6 +169,9 @@ describe('1Token request-time Hybrid key inheritance', () => {
     const settings = hybridSettings()
     settings.profiles[0].apiKey = 'image-fixture'
     settings.profiles[0].baseUrl = 'https://other.example'
+    expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
+    // A trailing slash is upstream's explicit-path mode, not an equivalent API route.
+    settings.profiles[0].baseUrl = 'https://edge.1token-store.com/'
     expect(getAgentTextApiProfile(settings)?.apiKey).toBe('')
     settings.profiles[0].baseUrl = settings.profiles[1].baseUrl
     vi.stubEnv('VITE_API_PROXY_AVAILABLE', 'true')

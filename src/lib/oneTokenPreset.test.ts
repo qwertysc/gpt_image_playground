@@ -16,7 +16,7 @@ import { callImageApi } from './api'
 import { DEFAULT_PARAMS } from '../types'
 
 const preset = JSON.parse(presetText)
-const models = ['gpt-image-2', 'gpt-image-2.5', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst']
+const models = ['gpt-image-2.6', 'gpt-image-2.6-flare', 'gpt-image-2.6-sunburst', 'gpt-image-2.5', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst', 'gpt-image-2']
 
 const hybridSettings = () => normalizeSettings({
   ...DEFAULT_SETTINGS,
@@ -67,7 +67,7 @@ describe('1Token deployment preset', () => {
     expect(result.images).toEqual(['data:image/png;base64,aW1hZ2U='])
   })
 
-  it('uses four native image choices, Base64 and independent image/text streams', () => {
+  it('uses seven native image choices, Base64 and independent image/text streams', () => {
     const settings = hybridSettings()
     const image = settings.profiles.find((profile) => profile.id === 'default-openai')!
     const text = settings.profiles.find((profile) => profile.id === '1token-agent')!
@@ -135,8 +135,8 @@ describe('1Token deployment preset', () => {
   it('falls back from an invalid selection without sending the comma-separated list', () => {
     const settings = hybridSettings()
     settings.profiles[0].selectedModel = 'invalid-model'
-    expect(getActiveApiProfile(settings).model).toBe('gpt-image-2')
-    expect(getAgentImageApiProfile(settings)?.model).toBe('gpt-image-2')
+    expect(getActiveApiProfile(settings).model).toBe('gpt-image-2.6')
+    expect(getAgentImageApiProfile(settings)?.model).toBe('gpt-image-2.6')
   })
 
   it.each([false, true])('updates locked defaults but preserves browser credentials (snapshot: %s)', (hasSnapshot) => {

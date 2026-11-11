@@ -11,10 +11,10 @@ Authority: [customizations](docs/1token-customizations.md), [upstream sync](docs
 
 | Role | Stable ID | Provider | Model | Protocol |
 |---|---|---|---|---|
-| Gallery / Hybrid image executor | default-openai | sb2api-async | gpt-image-2, gpt-image-2.5, gpt-image-2.5-flare, gpt-image-2.5-sunburst | Async Images, non-streaming |
+| Gallery / Hybrid image executor | default-openai | sb2api-async | gpt-image-2.6, gpt-image-2.6-flare, gpt-image-2.6-sunburst, gpt-image-2.5, gpt-image-2.5-flare, gpt-image-2.5-sunburst, gpt-image-2 | Async Images, non-streaming |
 | Agent text planner | 1token-agent | openai | gpt-6.1-sol | Responses, streaming |
 
-Both use `https://edge.1token-store.com`. Image defaults are `gpt-image-2`, local transparency and the native Base64 switch enabled. The selected image model remains user-selectable under locked presets. An empty text key inherits the image key at request time only under the trusted-provider/same-URL/same-route checks. Explicit text keys win; no key is copied into stored text settings.
+Both use `https://edge.1token-store.com`. Image defaults are `gpt-image-2.6` when no valid selection exists, local transparency and the native Base64 switch enabled. An existing valid selection is retained; list order does not implement automatic failover. The selected image model remains user-selectable under locked presets. This model-list update retains static output and does not add GIF/SVG controls. An empty text key inherits the image key at request time only under the trusted-provider/same-URL/same-route checks. Explicit text keys win; no key is copied into stored text settings.
 
 ## Cloudflare Workers Builds
 
